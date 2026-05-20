@@ -1,9 +1,12 @@
 package ec.edu.espe.zonas.entidades;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -37,4 +40,14 @@ public class Zona {
     
     @Column
     private int estado; //1. activo - 0; inactivo
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TipoZona tipo;
+
+    @Column
+    private LocalDateTime fechaCreacion;
+
+    @Column
+    private LocalDateTime fechaModificacion;
 }
