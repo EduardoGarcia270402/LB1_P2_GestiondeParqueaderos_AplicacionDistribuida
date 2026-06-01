@@ -22,7 +22,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-
 public class Zona {
 
     @Id
@@ -31,15 +30,15 @@ public class Zona {
 
     @Column(unique = true, nullable = false, length = 32)
     private String nombre;
-    
+
     @Column(unique = true, nullable = false, length = 32)
     private String codigo;
 
     @Column
     private String descripcion;
-    
+
     @Column
-    private int estado; //1. activo - 0; inactivo
+    private int estado; // 1 = activo, 0 = inactivo
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

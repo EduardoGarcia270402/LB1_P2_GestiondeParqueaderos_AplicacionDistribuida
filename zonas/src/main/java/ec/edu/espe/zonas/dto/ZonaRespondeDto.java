@@ -14,15 +14,16 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ZonaRespondeDto {
+
     private UUID id;
 
     private String nombre;
-    
+
     private String codigo;
 
     private String descripcion;
-    
-    private int estado; 
+
+    private int estado; // 1 = activo, 0 = inactivo
 
     private TipoZona tipo;
 

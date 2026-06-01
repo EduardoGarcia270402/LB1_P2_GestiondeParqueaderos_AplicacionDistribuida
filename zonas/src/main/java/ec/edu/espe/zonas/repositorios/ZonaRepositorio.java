@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.UUID;
 
 public interface ZonaRepositorio extends JpaRepository<Zona, UUID> {
+
     boolean existsByCodigo(String codigo);
 
     boolean existsByNombre(String nombre);
