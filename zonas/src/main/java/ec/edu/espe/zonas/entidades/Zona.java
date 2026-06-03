@@ -38,6 +38,9 @@ public class Zona {
     private String descripcion;
 
     @Column
+    private int capacidad;
+
+    @Column
     private int estado; // 1 = activo, 0 = inactivo
 
     @Enumerated(EnumType.STRING)

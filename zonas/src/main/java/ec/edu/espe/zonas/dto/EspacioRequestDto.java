@@ -2,6 +2,7 @@ package ec.edu.espe.zonas.dto;
 
 import java.util.UUID;
 
+import ec.edu.espe.zonas.entidades.EstadoEspacio;
 import ec.edu.espe.zonas.entidades.TipoEspacio;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -17,6 +18,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class EspacioRequestDto {
 
+    private String codigo;
+
     @NotNull(message = "El id de la zona es obligatorio")
     private UUID idZona;
 
@@ -25,4 +28,8 @@ public class EspacioRequestDto {
     @Enumerated(EnumType.STRING)
     @NotNull(message = "El tipo de espacio es obligatorio")
     private TipoEspacio tipo;
+
+    @Enumerated(EnumType.STRING)
+    @NotNull(message = "El estado de espacio es obligatorio")
+    private EstadoEspacio estado; // DISPONIBLE, OCUPADO, MANTENIMIENTO
 }

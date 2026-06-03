@@ -39,6 +39,7 @@ public class ZonaServicioImpl implements ZonaServicio {
         objZona.setDescripcion(request.getDescripcion());
         objZona.setTipo(request.getTipo());
         objZona.setEstado(1); // 1 = activo
+        objZona.setCapacidad(request.getCapacidad());
         objZona.setFechaCreacion(LocalDateTime.now());
         objZona.setFechaModificacion(LocalDateTime.now());
         objZona.setCodigo(generarCodigo(request, totalZonas + 1));

@@ -42,7 +42,11 @@ public class Espacio {
     private TipoEspacio tipo;
 
     @Column(nullable = false)
-    private boolean estado; // true = disponible, false = ocupado
+    private boolean activo; // true = disponible, false = ocupado
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EstadoEspacio estado; // DISPONIBLE, OCUPADO, MANTENIMIENTO, RESERVADO
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_zona", nullable = false)
