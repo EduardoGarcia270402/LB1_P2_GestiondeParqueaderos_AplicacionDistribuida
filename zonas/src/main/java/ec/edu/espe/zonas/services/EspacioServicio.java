@@ -1,4 +1,4 @@
-package ec.edu.espe.zonas.services.impl;
+package ec.edu.espe.zonas.services;
 
 import ec.edu.espe.zonas.dto.EspacioRequestDto;
 import ec.edu.espe.zonas.dto.EspacioRespondeDto;
@@ -17,7 +17,7 @@ public interface EspacioServicio {
 
     void eliminarEspacio(UUID idEspacio);
 
-    EspacioRespondeDto cambiarEstado(EstadoEspacio estado);
+    EspacioRespondeDto cambiarEstado(UUID idEspacio, EstadoEspacio nuevoEstado);
 
     List<EspacioRespondeDto> obtenerEspaciosPorEstado(EstadoEspacio estado);
 
