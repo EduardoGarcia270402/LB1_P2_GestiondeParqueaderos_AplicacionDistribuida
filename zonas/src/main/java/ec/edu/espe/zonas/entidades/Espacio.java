@@ -41,7 +41,7 @@ public class Espacio {
     @Column(nullable = false)
     private TipoEspacio tipo;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "boolean default true")
     private boolean activo; // true = disponible, false = ocupado
 
     @Enumerated(EnumType.STRING)

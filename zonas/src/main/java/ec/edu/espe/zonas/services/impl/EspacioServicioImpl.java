@@ -40,6 +40,12 @@ public class EspacioServicioImpl implements EspacioServicio {
     @Override
     @Transactional
     public EspacioRespondeDto crearEspacio(EspacioRequestDto dto) {
+        if (dto.getCodigo() == null || dto.getCodigo().isBlank()) {
+            throw new IllegalArgumentException("El codigo del espacio es obligatorio");
+        }
+        if (espacioRepositorio.existsByCodigo(dto.getCodigo())) {
+            throw new IllegalStateException("Ya existe un espacio con el codigo: " + dto.getCodigo());
+        }
 
         Zona objZona = zonaRepositorio.findById(dto.getIdZona())
                 .orElseThrow(() ->
@@ -49,6 +55,7 @@ public class EspacioServicioImpl implements EspacioServicio {
         Espacio nuevoEspacio = mapper.toEntity(dto);
 
         nuevoEspacio.setZona(objZona);
+        nuevoEspacio.setActivo(true);
         nuevoEspacio.setEstado(EstadoEspacio.DISPONIBLE);
         nuevoEspacio.setFechaCreacion(LocalDateTime.now());
         nuevoEspacio.setFechaModificacion(LocalDateTime.now());

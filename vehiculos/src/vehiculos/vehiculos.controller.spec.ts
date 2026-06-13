@@ -8,10 +8,21 @@ describe('VehiculosController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [VehiculosController],
-      providers: [VehiculosService],
+      providers: [
+        {
+          provide: VehiculosService,
+          useValue: {
+            create: jest.fn(),
+            findAll: jest.fn(),
+            findOne: jest.fn(),
+            update: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+      ],
     }).compile();
 
-    controller = module.get<VehiculosController>(VehiculosController);
+    controller = module.get(VehiculosController);
   });
 
   it('should be defined', () => {

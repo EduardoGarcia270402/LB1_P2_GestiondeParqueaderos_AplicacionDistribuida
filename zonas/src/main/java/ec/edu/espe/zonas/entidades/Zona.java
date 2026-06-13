@@ -37,8 +37,8 @@ public class Zona {
     @Column
     private String descripcion;
 
-    @Column
-    private int capacidad;
+    @Column(nullable = false, columnDefinition = "integer default 1")
+    private int capacidad = 1;
 
     @Column
     private int estado; // 1 = activo, 0 = inactivo

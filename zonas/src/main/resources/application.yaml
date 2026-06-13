@@ -3,19 +3,19 @@ spring:
     name: zonas
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/parqueaderos
-    username: postgres
-    password: postgres
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/parqueaderos}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: ${JPA_SHOW_SQL:false}
+    open-in-view: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         '[format_sql]': true
 
 server:
-  port: 8080
+  port: ${PORT:8080}

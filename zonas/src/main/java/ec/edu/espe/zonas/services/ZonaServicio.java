@@ -11,7 +11,7 @@ public interface ZonaServicio {
 
     ZonaRespondeDto crearZona(ZonaRequestDto request);
 
-    ZonaRequestDto actualizarZona(UUID idZona, ZonaRequestDto request);
+    ZonaRespondeDto actualizarZona(UUID idZona, ZonaRequestDto request);
 
     void desactivarZona(UUID idZona);
 }

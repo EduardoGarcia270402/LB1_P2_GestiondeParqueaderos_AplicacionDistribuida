@@ -27,6 +27,8 @@ public class ZonaRespondeDto {
 
     private TipoZona tipo;
 
+    private int capacidad;
+
     private LocalDateTime fechaCreacion;
 
     private LocalDateTime fechaModificacion;

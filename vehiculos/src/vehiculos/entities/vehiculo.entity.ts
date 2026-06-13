@@ -1,23 +1,39 @@
-import { Column, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  Entity,
+  PrimaryGeneratedColumn,
+  TableInheritance,
+} from 'typeorm';
 
-export class Vehiculo {
+export enum Clasificacion {
+  ELECTRICO = 'Electrico',
+  HIBRIDO = 'Hibrido',
+  GASOLINA = 'Gasolina',
+  DIESEL = 'Diesel',
+}
 
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+@Entity({ name: 'vehiculos' })
+@TableInheritance({ column: { type: 'varchar', name: 'tipo' } })
+export abstract class Vehiculo {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
-    @Column({unique:true})
-    placa!: string;
+  @Column({ unique: true, length: 16 })
+  placa!: string;
 
-    @Column()
-    marca!:string;
+  @Column({ length: 50 })
+  marca!: string;
 
-    @Column()
-    modelo!: string;
+  @Column({ length: 100 })
+  modelo!: string;
 
-    @Column()
-    color!: string;
+  @Column({ length: 50 })
+  color!: string;
 
-    @Column()
-    anio!: number;
+  @Column()
+  anio!: number;
+
+  @Column({ type: 'enum', enum: Clasificacion })
+  clasificacion!: Clasificacion;
 }
 

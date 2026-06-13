@@ -49,7 +49,7 @@ public class ZonaServicioImpl implements ZonaServicio {
     }
 
     @Override
-    public ZonaRequestDto actualizarZona(UUID idZona, ZonaRequestDto request) {
+    public ZonaRespondeDto actualizarZona(UUID idZona, ZonaRequestDto request) {
         Zona zona = repositorioZona.findById(idZona)
                 .orElseThrow(() -> new RuntimeException("Zona no encontrada con id: " + idZona));
 
@@ -61,10 +61,11 @@ public class ZonaServicioImpl implements ZonaServicio {
         zona.setNombre(request.getNombre());
         zona.setDescripcion(request.getDescripcion());
         zona.setTipo(request.getTipo());
+        zona.setCapacidad(request.getCapacidad());
         zona.setFechaModificacion(LocalDateTime.now());
 
         repositorioZona.save(zona);
-        return request;
+        return mapToDto(zona);
     }
 
     @Override
@@ -87,6 +88,7 @@ public class ZonaServicioImpl implements ZonaServicio {
                 .descripcion(objZona.getDescripcion())
                 .estado(objZona.getEstado())
                 .tipo(objZona.getTipo())
+                .capacidad(objZona.getCapacidad())
                 .fechaCreacion(objZona.getFechaCreacion())
                 .fechaModificacion(objZona.getFechaModificacion())
                 .build();

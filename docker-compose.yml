@@ -1,24 +1,56 @@
-version: '3.9'
-
 services:
-
   postgres:
-    image: postgres:16
-    container_name: postgres-parqueaderos
-
-    restart: always
-
+    image: postgres:16-alpine
+    container_name: parqueaderos-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: parqueaderos
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-
     ports:
       - "5432:5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d parqueaderos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  vehiculos:
+    build:
+      context: ./vehiculos
+    container_name: parqueaderos-vehiculos
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: parqueaderos
+      DB_SYNCHRONIZE: "true"
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+  zonas:
+    build:
+      context: ./zonas
+    container_name: parqueaderos-zonas
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/parqueaderos
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      PORT: 8080
+    ports:
+      - "8080:8080"
 
 volumes:
   postgres_data:
-
