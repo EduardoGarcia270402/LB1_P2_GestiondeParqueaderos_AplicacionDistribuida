@@ -82,3 +82,66 @@ Ejemplo para crear un espacio:
   "estado": "DISPONIBLE"
 }
 ```
+
+## API de personas, usuarios y roles
+
+La misma logica esta implementada en los dos frameworks y utiliza las tablas
+`persons`, `users`, `roles` y `user_role`.
+
+- NestJS: `http://localhost:3000/api`
+- Spring Boot: `http://localhost:8080/api`
+
+Puedes ejecutar los mismos endpoints cambiando solamente el puerto:
+
+- `POST|GET /personas`
+- `GET|PATCH|DELETE /personas/{id}`
+- `POST|GET /usuarios`
+- `GET /usuarios/{id}`
+- `POST|GET /roles`
+- `POST /usuarios/{userId}/roles/{roleId}`
+- `GET /usuarios/{userId}/roles`
+
+Crear una persona:
+
+```json
+{
+  "dni": "1723456789",
+  "firstName": "Eduardo",
+  "middleName": "Andres",
+  "lastName": "Garcia",
+  "email": "eduardo@example.com",
+  "phone": "0991234567",
+  "address": "Quito",
+  "nationality": "Ecuatoriana"
+}
+```
+
+Crear el usuario de esa persona:
+
+```json
+{
+  "personId": "UUID_DE_LA_PERSONA",
+  "password": "Password123"
+}
+```
+
+El `username` se genera automaticamente con la estructura:
+
+```text
+inicialPrimerNombre + inicialSegundoNombre + apellidoPaterno + secuencia
+```
+
+Ejemplo: `Ana Gabriela Cudco` genera `agcudco1`; si ya existe,
+el siguiente sera `agcudco2`.
+
+Crear un rol:
+
+```json
+{
+  "name": "CLIENTE",
+  "description": "Cliente del parqueadero"
+}
+```
+
+Los roles permitidos son `CLIENTE` y `OPERADOR`. La contrasena se almacena
+como hash bcrypt y nunca se incluye en las respuestas.
