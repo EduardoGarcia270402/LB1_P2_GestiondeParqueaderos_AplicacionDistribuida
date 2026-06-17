@@ -121,7 +121,7 @@ Crear el usuario de esa persona:
 ```json
 {
   "personId": "UUID_DE_LA_PERSONA",
-  "password": "Password123"
+  "password": "Password123!"
 }
 ```
 
@@ -145,3 +145,64 @@ Crear un rol:
 
 Los roles permitidos son `CLIENTE` y `OPERADOR`. La contrasena se almacena
 como hash bcrypt y nunca se incluye en las respuestas.
+
+Validaciones principales:
+
+- `firstName`, `middleName`, `lastName` y `nationality`: solo letras y
+  espacios simples, sin numeros ni espacios al inicio/final.
+- `phone`: celular ecuatoriano de 10 digitos con formato `09XXXXXXXX`.
+- `password`: minimo 8 caracteres, con mayuscula, minuscula, numero, simbolo
+  y sin espacios.
+
+## API de tickets
+
+La logica de tickets tambien esta disponible en los dos frameworks y usa la
+misma tabla `tickets`.
+
+- NestJS: `http://localhost:3000/api/tickets`
+- Spring Boot: `http://localhost:8080/api/tickets`
+
+Operaciones:
+
+- `POST /` crea un ticket de ingreso.
+- `GET /` lista tickets.
+- `GET /{id}` obtiene un ticket por id.
+- `PATCH /{id}/cerrar` cierra el ticket y libera el espacio.
+
+Para crear un ticket necesitas:
+
+- `userId`: el `idPerson` del usuario.
+- `vehiculoId`: el `id` del vehiculo.
+- `espacioId`: el `id` de un espacio `DISPONIBLE`.
+
+Crear ticket:
+
+```json
+{
+  "userId": "UUID_DEL_USUARIO",
+  "vehiculoId": "UUID_DEL_VEHICULO",
+  "espacioId": "UUID_DEL_ESPACIO"
+}
+```
+
+Al crear el ticket:
+
+- El ticket queda en estado `ABIERTO`.
+- El espacio pasa a `OCUPADO`.
+- El campo `activo` del espacio pasa a `false`.
+- No se permite crear otro ticket abierto para el mismo vehiculo o espacio.
+
+Cerrar ticket:
+
+```json
+{
+  "total": 2.5
+}
+```
+
+Al cerrar el ticket:
+
+- El ticket queda en estado `CERRADO`.
+- Se llena `fechaSalida`.
+- El espacio vuelve a `DISPONIBLE`.
+- El campo `activo` del espacio vuelve a `true`.

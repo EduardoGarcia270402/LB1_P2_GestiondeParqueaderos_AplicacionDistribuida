@@ -17,7 +17,7 @@ public class UsuarioCreateRequest {
     @NotBlank
     @Size(min = 8, max = 72)
     @Pattern(
-            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$",
-            message = "La contrasena debe incluir mayuscula, minuscula y numero")
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^\\w\\s])\\S+$",
+            message = "La contrasena debe incluir mayuscula, minuscula, numero, simbolo y no contener espacios")
     private String password;
 }

@@ -8,6 +8,8 @@ import {
   MinLength,
 } from 'class-validator';
 
+const NAME_PATTERN = /^[A-Za-zÁÉÍÓÚáéíóúÑñ]+(?: [A-Za-zÁÉÍÓÚáéíóúÑñ]+)*$/;
+
 export class CreatePersonaDto {
   @IsString()
   @Matches(/^\d{10,13}$/, {
@@ -19,17 +21,26 @@ export class CreatePersonaDto {
   @IsNotEmpty()
   @MinLength(2)
   @MaxLength(30)
+  @Matches(NAME_PATTERN, {
+    message: 'El primer nombre solo debe contener letras y espacios simples',
+  })
   firstName!: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(30)
+  @Matches(NAME_PATTERN, {
+    message: 'El segundo nombre solo debe contener letras y espacios simples',
+  })
   middleName?: string;
 
   @IsString()
   @IsNotEmpty()
   @MinLength(2)
   @MaxLength(30)
+  @Matches(NAME_PATTERN, {
+    message: 'El apellido solo debe contener letras y espacios simples',
+  })
   lastName!: string;
 
   @IsEmail()
@@ -37,8 +48,8 @@ export class CreatePersonaDto {
   email!: string;
 
   @IsString()
-  @Matches(/^\d{7,15}$/, {
-    message: 'El telefono debe contener entre 7 y 15 digitos',
+  @Matches(/^09\d{8}$/, {
+    message: 'El telefono debe ser un celular ecuatoriano de 10 digitos',
   })
   phone!: string;
 
@@ -49,5 +60,8 @@ export class CreatePersonaDto {
   @IsOptional()
   @IsString()
   @MaxLength(30)
+  @Matches(NAME_PATTERN, {
+    message: 'La nacionalidad solo debe contener letras y espacios simples',
+  })
   nationality?: string;
 }
