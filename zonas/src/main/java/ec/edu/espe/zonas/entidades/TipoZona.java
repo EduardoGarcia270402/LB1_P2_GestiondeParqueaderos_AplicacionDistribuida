@@ -1,5 +1,5 @@
 package ec.edu.espe.zonas.entidades;
 
 public enum TipoZona {
-    VIP, REGULAR, INTERNA, EXTERNA, PREFERECIAL
+    VIP, REGULAR, INTERNA, EXTERNA, PREFERENCIAL, 
 }

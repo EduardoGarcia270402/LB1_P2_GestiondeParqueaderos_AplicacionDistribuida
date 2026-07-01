@@ -1,56 +1,40 @@
+# ============================================================
+# Base de datos UNIFICADA para el sistema de parqueadero.
+#
+# Una sola instancia PostgreSQL (puerto host 5433) que aloja las
+# cuatro bases de datos usadas por las APIs:
+#   - zonas         (Spring Boot)  usuario: zonas      / zonas123
+#   - usuarios      (Spring Boot)  usuario: usuarios   / usuarios123
+#   - asignaciones  (Spring Boot)  usuario: asignaciones / asignaciones123
+#   - vehiculos_db  (NestJS)       usuario: postgres   / postgres
+#
+# Las bases y usuarios se crean automáticamente con los scripts
+# de ./init-db la primera vez que se levanta el volumen.
+#
+# Uso:
+#   docker compose up -d        # levantar
+#   docker compose down         # detener (conserva datos)
+#   docker compose down -v      # detener y BORRAR datos
+# ============================================================
 services:
   postgres:
-    image: postgres:16-alpine
-    container_name: parqueaderos-postgres
+    image: postgres:16
+    container_name: parqueadero-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: parqueaderos
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - parqueadero_pgdata:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d parqueaderos"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
-      retries: 10
-
-  vehiculos:
-    build:
-      context: ./vehiculos
-    container_name: parqueaderos-vehiculos
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: parqueaderos
-      DB_SYNCHRONIZE: "true"
-      PORT: 3000
-    ports:
-      - "3000:3000"
-
-  zonas:
-    build:
-      context: ./zonas
-    container_name: parqueaderos-zonas
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      DB_URL: jdbc:postgresql://postgres:5432/parqueaderos
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      PORT: 8080
-    ports:
-      - "8080:8080"
+      retries: 5
 
 volumes:
-  postgres_data:
+  parqueadero_pgdata:

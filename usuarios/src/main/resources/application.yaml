@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: usuarios
+  datasource:
+    url: jdbc:postgresql://localhost:${DB_PORT:5433}/usuarios
+    username: usuarios
+    password: usuarios123
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+server:
+  port: 8081
+
+jwt:
+  secret: ${JWT_SECRET:parqueadero-espe-clave-secreta-jwt-cambia-esto-en-produccion-2026}
+  issuer: ${JWT_ISSUER:parqueadero}
+  expiration-minutes: ${JWT_EXP_MIN:120}

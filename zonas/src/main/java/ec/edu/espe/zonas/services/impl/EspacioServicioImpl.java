@@ -1,25 +1,27 @@
-package ec.edu.espe.zonas.services.impl;
+package ec.edu.espe.zonas.services.Impl;
 
-import ec.edu.espe.zonas.dto.EspacioRequestDto;
-import ec.edu.espe.zonas.dto.EspacioRespondeDto;
-import ec.edu.espe.zonas.entidades.Espacio;
-import ec.edu.espe.zonas.entidades.EstadoEspacio;
-import ec.edu.espe.zonas.entidades.Zona;
-import ec.edu.espe.zonas.repositorios.EspacioRepositorio;
-import ec.edu.espe.zonas.repositorios.ZonaRepositorio;
-import ec.edu.espe.zonas.services.EspacioServicio;
-import ec.edu.espe.zonas.utils.UtilsMapers;
-
-import lombok.RequiredArgsConstructor;
-
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import ec.edu.espe.zonas.dtos.DisponibilidadResponseDto;
+import ec.edu.espe.zonas.dtos.EspacioRequestDto;
+import ec.edu.espe.zonas.dtos.EspacioRespondeDto;
+import ec.edu.espe.zonas.entidades.Espacio;
+import ec.edu.espe.zonas.entidades.EstadoEspacio;
+import ec.edu.espe.zonas.entidades.TipoEspacio;
+import ec.edu.espe.zonas.entidades.Zona;
+import ec.edu.espe.zonas.repositorios.EspacioRepositorio;
+import ec.edu.espe.zonas.repositorios.ZonaRepositorio;
+import ec.edu.espe.zonas.services.EspacioServicio;
+import ec.edu.espe.zonas.utils.RecursoNoEncontradoException;
+import ec.edu.espe.zonas.utils.ReglaNegocioException;
+import ec.edu.espe.zonas.utils.UtilMapers;
+import lombok.RequiredArgsConstructor;
+
 
 @Service
 @RequiredArgsConstructor
@@ -27,192 +29,204 @@ public class EspacioServicioImpl implements EspacioServicio {
 
     private final EspacioRepositorio espacioRepositorio;
     private final ZonaRepositorio zonaRepositorio;
-    private final UtilsMapers mapper;
+    private final UtilMapers maper;
 
     @Override
     @Transactional(readOnly = true)
-    public List<EspacioRespondeDto> obtenerEspacios() {
+    public List<EspacioRespondeDto> obtenerEspacio() {
         return espacioRepositorio.findAll().stream()
-                .map(mapper::toResponse)
+                .map(maper::toResponseDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EspacioRespondeDto obtenerEspacioPorId(UUID idEspacio) {
+        Espacio espacio = espacioRepositorio.findById(idEspacio)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Espacio no encontrado con ID: " + idEspacio));
+        return maper.toResponseDto(espacio);
     }
 
     @Override
     @Transactional
     public EspacioRespondeDto crearEspacio(EspacioRequestDto dto) {
-        if (dto.getCodigo() == null || dto.getCodigo().isBlank()) {
-            throw new IllegalArgumentException("El codigo del espacio es obligatorio");
-        }
-        if (espacioRepositorio.existsByCodigo(dto.getCodigo())) {
-            throw new IllegalStateException("Ya existe un espacio con el codigo: " + dto.getCodigo());
-        }
 
         Zona objZona = zonaRepositorio.findById(dto.getIdZona())
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Zona no encontrada con id: " + dto.getIdZona()));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Zona no encontrada con ID: " + dto.getIdZona()));
 
-        Espacio nuevoEspacio = mapper.toEntity(dto);
+        if (!objZona.isActivo()) {
+            throw new ReglaNegocioException("No se puede crear un espacio en una zona inactiva");
+        }
 
-        nuevoEspacio.setZona(objZona);
-        nuevoEspacio.setActivo(true);
-        nuevoEspacio.setEstado(EstadoEspacio.DISPONIBLE);
-        nuevoEspacio.setFechaCreacion(LocalDateTime.now());
-        nuevoEspacio.setFechaModificacion(LocalDateTime.now());
+        long espaciosActuales = espacioRepositorio.countByZona(objZona);
+        if (espaciosActuales >= objZona.getCapacidad()) {
+            throw new ReglaNegocioException(
+                    "La zona alcanzó su capacidad máxima (" + objZona.getCapacidad() + ")");
+        }
 
-        espacioRepositorio.save(nuevoEspacio);
+        // El código del espacio SIEMPRE se autogenera; no se acepta uno del cliente.
+        String codigo = generarCodigoEspacio(dto);
 
-        return mapper.toResponse(nuevoEspacio);
+        Espacio espacio = maper.toEntityEspacio(dto);
+        espacio.setCodigo(codigo);
+        espacio.setZona(objZona);
+        espacio.setActivo(true);
+        espacio.setEstado(EstadoEspacio.DISPONIBLE);
+
+        Espacio espacioSaved = espacioRepositorio.save(espacio);
+        return maper.toResponseDto(espacioSaved);
     }
 
     @Override
     @Transactional
-    public EspacioRespondeDto actualizarEspacio(EspacioRequestDto dto) {
+    public EspacioRespondeDto actualizarEspacio(UUID idEspacio, EspacioRequestDto dto) {
+        Espacio espacio = espacioRepositorio.findById(idEspacio)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Espacio no encontrado con ID: " + idEspacio));
 
-        if (dto == null || dto.getCodigo() == null) {
-            throw new IllegalArgumentException(
-                    "El código del espacio es obligatorio para actualizar");
-        }
+        // Solo se actualizan atributos descriptivos. El codigo es inmutable,
+        // la zona no se reasigna (rompería la capacidad), y el estado/activo
+        // se gestionan con sus endpoints dedicados.
+        espacio.setDescripcion(dto.getDescripcion());
+        espacio.setTipoEspacio(dto.getTipo());
 
-        Optional<Espacio> opt = espacioRepositorio.findByCodigo(dto.getCodigo());
-
-        Espacio existente = opt.orElseThrow(() ->
-                new RuntimeException(
-                        "Espacio no encontrado con codigo: " + dto.getCodigo()));
-
-        if (dto.getIdZona() != null) {
-
-            Zona zona = zonaRepositorio.findById(dto.getIdZona())
-                    .orElseThrow(() ->
-                            new RuntimeException(
-                                    "Zona no encontrada con id: " + dto.getIdZona()));
-
-            existente.setZona(zona);
-        }
-
-        existente.setDescripcion(dto.getDescripcion());
-        existente.setTipo(dto.getTipo());
-
-        // VALIDAR ESTADO
-        if (dto.getEstado() != null) {
-
-            if (existente.getEstado() == dto.getEstado()) {
-                throw new IllegalStateException(
-                        "El espacio ya se encuentra en estado "
-                                + dto.getEstado());
-            }
-
-            validarCambioEstado(existente.getEstado(), dto.getEstado());
-
-            existente.setEstado(dto.getEstado());
-        }
-
-        existente.setFechaModificacion(LocalDateTime.now());
-
-        espacioRepositorio.save(existente);
-
-        return mapper.toResponse(existente);
+        return maper.toResponseDto(espacioRepositorio.save(espacio));
     }
 
     @Override
     @Transactional
-    public void eliminarEspacio(UUID idEspacio) {
+    public EspacioRespondeDto cambiarEstado(UUID idEspacio, EstadoEspacio estado) {
 
-        Espacio esp = espacioRepositorio.findById(idEspacio)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Espacio no encontrado con id: " + idEspacio));
-
-        espacioRepositorio.delete(esp);
-    }
-
-    @Override
-    @Transactional
-    public EspacioRespondeDto cambiarEstado(
-            UUID idEspacio,
-            EstadoEspacio nuevoEstado) {
+        if (idEspacio == null) {
+            throw new IllegalArgumentException("El id del espacio es obligatorio");
+        }
+        if (estado == null) {
+            throw new IllegalArgumentException("El nuevo estado es obligatorio");
+        }
 
         Espacio espacio = espacioRepositorio.findById(idEspacio)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Espacio no encontrado con id: " + idEspacio));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Espacio no encontrado con ID: " + idEspacio));
 
-        EstadoEspacio estadoActual = espacio.getEstado();
-
-        // VALIDAR MISMO ESTADO
-        if (estadoActual == nuevoEstado) {
-
-            throw new IllegalStateException(
-                    "No se puede cambiar el estado de "
-                            + estadoActual
-                            + " a "
-                            + nuevoEstado);
+        if (!espacio.isActivo()) {
+            throw new ReglaNegocioException("No se puede cambiar el estado de un espacio inactivo");
+        }
+        if (espacio.getEstado() == estado) {
+            throw new ReglaNegocioException("El espacio ya se encuentra en estado: " + estado);
         }
 
-        // VALIDAR CAMBIO
-        validarCambioEstado(estadoActual, nuevoEstado);
+        espacio.setEstado(estado);
 
-        // ACTUALIZAR
-        espacio.setEstado(nuevoEstado);
-        espacio.setFechaModificacion(LocalDateTime.now());
-
-        espacioRepositorio.save(espacio);
-
-        return mapper.toResponse(espacio);
+        return maper.toResponseDto(espacioRepositorio.save(espacio));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<EspacioRespondeDto> obtenerEspaciosPorEstado(
-            EstadoEspacio estado) {
-
+    public List<EspacioRespondeDto> obtnerEspacioPOrEstado(EstadoEspacio estado) {
+        if (estado == null) {
+            throw new IllegalArgumentException("El estado es obligatorio");
+        }
         return espacioRepositorio.findByEstado(estado).stream()
-                .map(mapper::toResponse)
+                .map(maper::toResponseDto)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<EspacioRespondeDto> obtenerEspaciosPorZona(
-            UUID idZona,
-            EstadoEspacio estado) {
+    public EspacioRespondeDto obtenerEspacioPorZonaEstado(UUID idZona, EstadoEspacio estado) {
+        if (estado == null) {
+            throw new IllegalArgumentException("El estado es obligatorio");
+        }
+        Zona objZona = zonaRepositorio.findById(idZona)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Zona no encontrada con ID: " + idZona));
 
-        Zona zona = zonaRepositorio.findById(idZona)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Zona no encontrada con id: " + idZona));
+        return espacioRepositorio.findByZonaAndEstado(objZona, estado).stream()
+                .findFirst()
+                .map(maper::toResponseDto)
+                .orElse(null);
+    }
 
-        return espacioRepositorio.findByZonaAndEstado(zona, estado).stream()
-                .map(mapper::toResponse)
+    @Override
+    @Transactional(readOnly = true)
+    public List<EspacioRespondeDto> listarDisponibles(UUID idZona, TipoEspacio tipo) {
+        // "Disponible" = estado DISPONIBLE. Los filtros zona/tipo son opcionales.
+        List<Espacio> espacios;
+
+        if (idZona != null) {
+            Zona objZona = zonaRepositorio.findById(idZona)
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Zona no encontrada con ID: " + idZona));
+            espacios = (tipo != null)
+                    ? espacioRepositorio.findByZonaAndTipoEspacioAndEstado(objZona, tipo, EstadoEspacio.DISPONIBLE)
+                    : espacioRepositorio.findByZonaAndEstado(objZona, EstadoEspacio.DISPONIBLE);
+        } else if (tipo != null) {
+            espacios = espacioRepositorio.findByTipoEspacioAndEstado(tipo, EstadoEspacio.DISPONIBLE);
+        } else {
+            espacios = espacioRepositorio.findByEstado(EstadoEspacio.DISPONIBLE);
+        }
+
+        // Solo se consideran disponibles los espacios activos.
+        return espacios.stream()
+                .filter(Espacio::isActivo)
+                .map(maper::toResponseDto)
                 .collect(Collectors.toList());
     }
 
-    //Validaciones de estado
-    private void validarCambioEstado(
-            EstadoEspacio actual,
-            EstadoEspacio nuevo) {
+    @Override
+    @Transactional(readOnly = true)
+    public DisponibilidadResponseDto verificarDisponibilidad(UUID idEspacio) {
+        Espacio espacio = espacioRepositorio.findById(idEspacio)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Espacio no encontrado con ID: " + idEspacio));
 
-        // MISMO ESTADO
-        if (actual == nuevo) {
+        boolean disponible = espacio.isActivo() && espacio.getEstado() == EstadoEspacio.DISPONIBLE;
 
-            throw new IllegalStateException(
-                    "El espacio ya se encuentra en estado " + actual);
+        return DisponibilidadResponseDto.builder()
+                .idEspacio(espacio.getId())
+                .codigo(espacio.getCodigo())
+                .disponible(disponible)
+                .activo(espacio.isActivo())
+                .estado(espacio.getEstado())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void activarEspacio(UUID idEspacio) {
+        Espacio espacio = espacioRepositorio.findById(idEspacio)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Espacio no encontrado con ID: " + idEspacio));
+        if (espacio.isActivo()) {
+            throw new ReglaNegocioException("El espacio ya está activo");
         }
-
-        // MANTENIMIENTO -> OCUPADO
-        if (actual == EstadoEspacio.MANTENIMIENTO
-                && nuevo == EstadoEspacio.OCUPADO) {
-
-            throw new IllegalStateException(
-                    "Un espacio en mantenimiento no puede pasar a ocupado");
+        // Invariante: un espacio no puede estar activo si su zona está inactiva.
+        if (!espacio.getZona().isActivo()) {
+            throw new ReglaNegocioException("No se puede activar el espacio: su zona está inactiva");
         }
+        espacio.setActivo(true);
+        espacio.setEstado(EstadoEspacio.DISPONIBLE);
+        espacioRepositorio.save(espacio);
+    }
 
-        // RESERVADO -> RESERVADO
-        if (actual == EstadoEspacio.RESERVADO
-                && nuevo == EstadoEspacio.RESERVADO) {
-
-            throw new IllegalStateException(
-                    "El espacio ya está reservado");
+    @Override
+    @Transactional
+    public void desactivarEspacio(UUID idEspacio) {
+        Espacio espacio = espacioRepositorio.findById(idEspacio)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Espacio no encontrado con ID: " + idEspacio));
+        if (!espacio.isActivo()) {
+            throw new ReglaNegocioException("El espacio ya está inactivo");
         }
+        if (espacio.getEstado() == EstadoEspacio.OCUPADO) {
+            throw new ReglaNegocioException("No se puede desactivar un espacio OCUPADO");
+        }
+        espacio.setActivo(false);
+        espacio.setEstado(EstadoEspacio.MANTENIMIENTO);
+        espacioRepositorio.save(espacio);
+    }
+
+    private String generarCodigoEspacio(EspacioRequestDto dto) {
+        String tipo = dto.getTipo().name().substring(0, 3); // MOTO->MOT, AUTO->AUT, BUSETA->BUS
+        long numero = espacioRepositorio.countByTipoEspacio(dto.getTipo()) + 1;
+        String codigo = String.format("ESP-%s-%02d", tipo, numero);
+        while (espacioRepositorio.existsByCodigoIgnoreCase(codigo)) {
+            numero++;
+            codigo = String.format("ESP-%s-%02d", tipo, numero);
+        }
+        return codigo;
     }
 }

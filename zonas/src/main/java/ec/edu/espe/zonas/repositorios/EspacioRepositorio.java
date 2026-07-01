@@ -1,22 +1,32 @@
 package ec.edu.espe.zonas.repositorios;
 
-import ec.edu.espe.zonas.entidades.Espacio;
-import ec.edu.espe.zonas.entidades.Zona;
-import ec.edu.espe.zonas.entidades.EstadoEspacio;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
 import java.util.UUID;
 
-public interface EspacioRepositorio extends JpaRepository<Espacio, UUID> {
+import org.springframework.data.jpa.repository.JpaRepository;
 
-    boolean existsByCodigo(String codigo);
+import ec.edu.espe.zonas.entidades.Espacio;
+import ec.edu.espe.zonas.entidades.EstadoEspacio;
+import ec.edu.espe.zonas.entidades.TipoEspacio;
+import ec.edu.espe.zonas.entidades.Zona;
 
-    java.util.Optional<Espacio> findByCodigo(String codigo);
+public interface EspacioRepositorio extends JpaRepository<Espacio,UUID> {
+
+    boolean existsByCodigoIgnoreCase(String codigo);
+
+    long countByZona(Zona zona);
+
+    long countByTipoEspacio(ec.edu.espe.zonas.entidades.TipoEspacio tipoEspacio);
 
     List<Espacio> findByZona(Zona zona);
 
     List<Espacio> findByZonaAndEstado(Zona zona, EstadoEspacio estado);
-
+    
     List<Espacio> findByEstado(EstadoEspacio estado);
+
+    // Consultas de disponibilidad filtrables por tipo y/o zona.
+    List<Espacio> findByTipoEspacioAndEstado(TipoEspacio tipoEspacio, EstadoEspacio estado);
+
+    List<Espacio> findByZonaAndTipoEspacioAndEstado(Zona zona, TipoEspacio tipoEspacio, EstadoEspacio estado);
+
 }

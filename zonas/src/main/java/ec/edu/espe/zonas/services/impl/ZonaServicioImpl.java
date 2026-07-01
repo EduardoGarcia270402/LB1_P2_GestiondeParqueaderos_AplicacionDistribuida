@@ -1,108 +1,179 @@
-package ec.edu.espe.zonas.services.impl;
+package ec.edu.espe.zonas.services.Impl;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import ec.edu.espe.zonas.dto.ZonaRequestDto;
-import ec.edu.espe.zonas.dto.ZonaRespondeDto;
+import ec.edu.espe.zonas.dtos.EspacioRespondeDto;
+import ec.edu.espe.zonas.dtos.ZonaRequestDto;
+import ec.edu.espe.zonas.dtos.ZonaRespondeDto;
+import ec.edu.espe.zonas.entidades.Espacio;
+import ec.edu.espe.zonas.entidades.EstadoEspacio;
+import ec.edu.espe.zonas.entidades.Zona;
+import ec.edu.espe.zonas.repositorios.EspacioRepositorio;
 import ec.edu.espe.zonas.repositorios.ZonaRepositorio;
 import ec.edu.espe.zonas.services.ZonaServicio;
-import ec.edu.espe.zonas.entidades.Zona;
+import ec.edu.espe.zonas.utils.RecursoNoEncontradoException;
+import ec.edu.espe.zonas.utils.ReglaNegocioException;
+import lombok.RequiredArgsConstructor;
+
+
 
 @Service
+@RequiredArgsConstructor
 public class ZonaServicioImpl implements ZonaServicio {
 
-    @Autowired
-    private ZonaRepositorio repositorioZona;
+    private final ZonaRepositorio repositorioZona;
+    private final EspacioRepositorio repositorioEspacio;
 
     @Override
-    public List<ZonaRespondeDto> ListarZonas() {
+    @Transactional(readOnly = true)
+    public List<ZonaRespondeDto> listarZonas() {
         return repositorioZona.findAll().stream()
                 .map(this::mapToDto)
                 .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ZonaRespondeDto obtenerZona(UUID id) {
+        Zona zona = repositorioZona.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Zona no encontrada con ID: " + id));
+        return mapToDto(zona);
+    }
+
+    @Override
     public ZonaRespondeDto crearZona(ZonaRequestDto request) {
-        if (repositorioZona.existsByNombre(request.getNombre())) {
-            throw new RuntimeException("Ya existe una zona con el nombre: " + request.getNombre());
+
+        String nombre = request.getNombre().trim();
+
+        if(repositorioZona.existsByNombreIgnoreCase(nombre)){
+            throw new ReglaNegocioException("Ya existe una zona con el nombre: " + nombre);
         }
 
-        long totalZonas = repositorioZona.count();
 
         Zona objZona = new Zona();
-        objZona.setNombre(request.getNombre());
+
+        objZona.setNombre(nombre);
+        objZona.setCodigo(generarCodigo(request));
         objZona.setDescripcion(request.getDescripcion());
-        objZona.setTipo(request.getTipo());
-        objZona.setEstado(1); // 1 = activo
+        objZona.setTipoZona(request.getTipo());
+        objZona.setActivo(true);
         objZona.setCapacidad(request.getCapacidad());
-        objZona.setFechaCreacion(LocalDateTime.now());
-        objZona.setFechaModificacion(LocalDateTime.now());
-        objZona.setCodigo(generarCodigo(request, totalZonas + 1));
 
         repositorioZona.save(objZona);
         return mapToDto(objZona);
     }
 
     @Override
+    @Transactional
     public ZonaRespondeDto actualizarZona(UUID idZona, ZonaRequestDto request) {
         Zona zona = repositorioZona.findById(idZona)
-                .orElseThrow(() -> new RuntimeException("Zona no encontrada con id: " + idZona));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Zona no encontrada con ID: " + idZona));
 
-        if (!zona.getNombre().equals(request.getNombre())
-                && repositorioZona.existsByNombre(request.getNombre())) {
-            throw new RuntimeException("Ya existe una zona con el nombre: " + request.getNombre());
+        String nombre = request.getNombre().trim();
+
+        if (repositorioZona.existsByNombreIgnoreCaseAndIdNot(nombre, idZona)) {
+            throw new ReglaNegocioException("Ya existe otra zona con el nombre: " + nombre);
         }
 
-        zona.setNombre(request.getNombre());
+        long espaciosActuales = repositorioEspacio.countByZona(zona);
+        if (request.getCapacidad() < espaciosActuales) {
+            throw new ReglaNegocioException(
+                    "La capacidad (" + request.getCapacidad() + ") no puede ser menor a los espacios existentes ("
+                            + espaciosActuales + ")");
+        }
+
+        zona.setNombre(nombre);
         zona.setDescripcion(request.getDescripcion());
-        zona.setTipo(request.getTipo());
+        zona.setTipoZona(request.getTipo());
         zona.setCapacidad(request.getCapacidad());
-        zona.setFechaModificacion(LocalDateTime.now());
 
         repositorioZona.save(zona);
         return mapToDto(zona);
     }
 
     @Override
-    public void desactivarZona(UUID idZona) {
+    @Transactional
+    public void activarZona(UUID idZona) {
         Zona zona = repositorioZona.findById(idZona)
-                .orElseThrow(() -> new RuntimeException("Zona no encontrada con id: " + idZona));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Zona no encontrada con ID: " + idZona));
 
-        zona.setEstado(0); // 0 = inactivo
-        zona.setFechaModificacion(LocalDateTime.now());
+        List<Espacio> espacios = repositorioEspacio.findByZona(zona);
+        for (Espacio espacio : espacios) {
+            espacio.setActivo(true);
+            espacio.setEstado(EstadoEspacio.DISPONIBLE);
+        }
+        repositorioEspacio.saveAll(espacios);
+
+        zona.setActivo(true);
         repositorioZona.save(zona);
     }
 
-    // ─────────────── Métodos privados ───────────────
+    @Override
+    @Transactional
+    public void desactivarZona(UUID idZona) {
+        Zona zona = repositorioZona.findById(idZona)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Zona no encontrada con ID: " + idZona));
 
-    private ZonaRespondeDto mapToDto(Zona objZona) {
+        List<Espacio> espacios = repositorioEspacio.findByZona(zona);
+
+        //si esta ocuapdo
+        boolean hayOcupado = espacios.stream()
+                .anyMatch(espacio -> espacio.getEstado() == EstadoEspacio.OCUPADO);
+        if (hayOcupado) {
+            throw new ReglaNegocioException("No se puede desactivar la zona: tiene espacios OCUPADOS");
+        }
+
+        for (Espacio espacio : espacios) {
+            espacio.setActivo(false);
+            espacio.setEstado(EstadoEspacio.MANTENIMIENTO);
+        }
+        repositorioEspacio.saveAll(espacios);
+
+        zona.setActivo(false);
+        repositorioZona.save(zona);
+    }
+
+
+    private ZonaRespondeDto mapToDto(Zona objZona){
         return ZonaRespondeDto.builder()
-                .id(objZona.getId())
-                .nombre(objZona.getNombre())
-                .codigo(objZona.getCodigo())
-                .descripcion(objZona.getDescripcion())
-                .estado(objZona.getEstado())
-                .tipo(objZona.getTipo())
-                .capacidad(objZona.getCapacidad())
-                .fechaCreacion(objZona.getFechaCreacion())
-                .fechaModificacion(objZona.getFechaModificacion())
+        .idZona(objZona.getId())
+        .nombre(objZona.getNombre())
+        .codigo(objZona.getCodigo())
+        .descripcion(objZona.getDescripcion())
+        .activo(objZona.isActivo())
+        .tipoZona(objZona.getTipoZona())
+        .capacidad(objZona.getCapacidad())
+        .espacios(objZona.getEspacios().stream().map(this::mapEspacioToDto).toList())
+        .fechaCreacion(objZona.getFechaCreacion())
+        .fechaActualizacion(objZona.getFechaActualizacion())
+        .build();   
+    }
+
+    private EspacioRespondeDto mapEspacioToDto(Espacio espacio) {
+        return EspacioRespondeDto.builder()
+                .id(espacio.getId())
+                .codigo(espacio.getCodigo())
+                .descripcion(espacio.getDescripcion())
+                .tipo(espacio.getTipoEspacio())
+                .activo(espacio.isActivo())
+                .estado(espacio.getEstado())
+                .idZona(espacio.getZona() != null ? espacio.getZona().getId() : null)
                 .build();
     }
 
-    /**
-     * Genera un código con el formato: ZONA-<TIPO_ABREV>-<NUMERO>
-     * Ejemplo: ZONA-REG-01, ZONA-VIP-02, ZONA-INT-03
-     * La primera zona insertada en una BDD vacía será ZONA-REG-01 (o el tipo correspondiente).
-     */
-    private String generarCodigo(ZonaRequestDto request, long numero) {
-        String tipoAbrev = (request.getTipo() != null)
-                ? request.getTipo().name().substring(0, Math.min(3, request.getTipo().name().length()))
-                : "GEN";
-        return String.format("ZONA-%s-%02d", tipoAbrev.toUpperCase(), numero);
+    String generarCodigo(ZonaRequestDto request){
+        String tipo = request.getTipo().name().substring(0, 3); //REGULAR -> REG, VIP -> VIP
+        long numero = repositorioZona.countByTipoZona(request.getTipo()) + 1;
+        String codigo = String.format("ZONA-%s-%02d", tipo, numero);
+        while (repositorioZona.existsByCodigo(codigo)) {
+            numero++;
+            codigo = String.format("ZONA-%s-%02d", tipo, numero);
+        }
+        return codigo;
     }
+    
 }

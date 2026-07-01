@@ -1,25 +1,35 @@
 package ec.edu.espe.zonas.services;
 
-import ec.edu.espe.zonas.dto.EspacioRequestDto;
-import ec.edu.espe.zonas.dto.EspacioRespondeDto;
-import ec.edu.espe.zonas.entidades.EstadoEspacio;
-
 import java.util.List;
 import java.util.UUID;
 
+import ec.edu.espe.zonas.dtos.DisponibilidadResponseDto;
+import ec.edu.espe.zonas.dtos.EspacioRequestDto;
+import ec.edu.espe.zonas.dtos.EspacioRespondeDto;
+import ec.edu.espe.zonas.entidades.EstadoEspacio;
+import ec.edu.espe.zonas.entidades.TipoEspacio;
 public interface EspacioServicio {
 
-    List<EspacioRespondeDto> obtenerEspacios();
+    List<EspacioRespondeDto> obtenerEspacio();
+
+    EspacioRespondeDto obtenerEspacioPorId(UUID idEspacio);
 
     EspacioRespondeDto crearEspacio(EspacioRequestDto dto);
 
-    EspacioRespondeDto actualizarEspacio(EspacioRequestDto dto);
+    EspacioRespondeDto actualizarEspacio(UUID idEspacio, EspacioRequestDto dto);
 
-    void eliminarEspacio(UUID idEspacio);
+    EspacioRespondeDto cambiarEstado(UUID idEspacio, EstadoEspacio estado);
 
-    EspacioRespondeDto cambiarEstado(UUID idEspacio, EstadoEspacio nuevoEstado);
+    void activarEspacio(UUID idEspacio);
 
-    List<EspacioRespondeDto> obtenerEspaciosPorEstado(EstadoEspacio estado);
+    void desactivarEspacio(UUID idEspacio);
 
-    List<EspacioRespondeDto> obtenerEspaciosPorZona(UUID idZona, EstadoEspacio estado);
+    List<EspacioRespondeDto> obtnerEspacioPOrEstado(EstadoEspacio estado);
+
+    EspacioRespondeDto obtenerEspacioPorZonaEstado(UUID idZona, EstadoEspacio estado);
+
+    // Disponibilidad pensada para el sistema de tickets.
+    List<EspacioRespondeDto> listarDisponibles(UUID idZona, TipoEspacio tipo);
+
+    DisponibilidadResponseDto verificarDisponibilidad(UUID idEspacio);
 }
